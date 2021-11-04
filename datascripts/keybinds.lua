@@ -2,11 +2,12 @@
 
 binds = {
 	Shoot = "usetool",
-	Disengage = "rmb",
-	Toggle_Camera = "r",
-	Tilt_Clockwise = "e",
-	Tilt_Counter_Clockwise = "q",
+	Disengage = "r",
+	Toggle_Camera = "t",
+	--Tilt_Clockwise = "e",
+	--Tilt_Counter_Clockwise = "q",
 	Plane_Select_Move = "mousewheel",
+	Fly_To_Target = "rmb",
 	Open_Menu = "c",
 }
 
@@ -24,9 +25,10 @@ bindNames = {
 	Shoot = "Shoot",
 	Disengage = "Disengage",
 	Toggle_Camera = "Toggle Camera",
-	Tilt_Clockwise = "Tilt Clockwise",
-	Tilt_Counter_Clockwise = "Tilt Counter Clockwise",
+	--Tilt_Clockwise = "Tilt Clockwise",
+	--Tilt_Counter_Clockwise = "Tilt Counter Clockwise",
 	Plane_Select_Move = "Plane Select Move",
+	Fly_To_Target = "Fly To Target",
 	Open_Menu = "Open Menu",
 }
 

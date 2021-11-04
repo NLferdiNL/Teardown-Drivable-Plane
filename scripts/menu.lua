@@ -276,6 +276,7 @@ function setupTextBoxes()
 		end
 		
 		if isNewBox then
+			newTextBox.disabled = not varData.configurable
 			newTextBox.name = varData.name
 			newTextBox.value = varData.current .. ""
 			newTextBox.numbersOnly = isNumber
