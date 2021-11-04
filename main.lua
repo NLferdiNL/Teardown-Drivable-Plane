@@ -11,8 +11,9 @@ toolReadableName = "Drivable Plane"
 
 local menu_disabled = false
 
--- TODO: [LOW PRIORITY] Fix third person camera: Plane moves right during turn.
 -- TODO: [HIGH PRIORITY] Make sprites for other planes.
+-- TODO: [MED PRIORITY] Fix third person camera: Plane moves right during turn.
+-- TODO: [LOW PRIORITY] Better visuals for set target.
 
 savedVars = {
 	Speed = { name = "Speed",
