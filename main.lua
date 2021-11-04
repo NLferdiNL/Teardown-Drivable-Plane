@@ -11,8 +11,7 @@ toolReadableName = "Drivable Plane"
 
 local menu_disabled = false
 
--- TODO: Rewrite menu system to auto generate textboxes.
--- TODO: Make aiming system around plane if no raycast hit.
+-- TODO: Fix third person camera: Plane moves right during turn.
 
 savedVars = {
 	Speed = { name = "Speed",
@@ -58,10 +57,10 @@ local planeTransform = Transform(planePosition, planeRotation)
 local planeDirection = Vec(0, 0, -1) -- local space
 local planeTilt = 0
 
+local cameraTransform = Transform()
+
 local selectedPlane = 1
 local planeCount = 2
-
---local lastFlightCameraPos = Vec()
 
 local cameraLocalPos = Vec(0, 0.5, 5)
 local cameraLocalLookPos = Vec(0, 0.25, 0)
@@ -82,6 +81,28 @@ function tick(dt)
 		menu_tick(dt)
 	end
 	
+	local isMenuOpenRightNow = isMenuOpen()
+	
+	if not canUseTool() then
+		return
+	end
+	
+	planeBodiesLogic(dt)
+	
+	if isMenuOpenRightNow then
+		return
+	end
+	
+	if InputPressed(binds["Shoot"]) and not planeActive then
+		startFlight()
+	end
+end
+
+function draw(dt)
+	menu_draw(dt)
+end
+
+function planeBodiesLogic(dt)
 	SetToolTransform(Transform(), 0)
 	
 	local toolBody = GetToolBody()
@@ -135,33 +156,6 @@ function tick(dt)
 			placeLocalBodyAtPos(toolBody, toolShapes[i], Vec(0, -500, 0), Quat())
 		end
 	end
-	
-	local isMenuOpenRightNow = isMenuOpen()
-	
-	if not canUseTool() then
-		return
-	end
-	
-	if isMenuOpenRightNow then
-		return
-	end
-	
-	if InputPressed(binds["Shoot"]) and not planeActive then
-		startFlight()
-	end
-end
-
-function draw(dt)
-	menu_draw(dt)
-	
-	--[[if planeActive and inFlightCamera then
-	UiPush()
-		UiAlign("center middle")
-		UiTranslate(UiCenter(), UiMiddle())
-		c_UiColor(Color4.Red)
-		UiRect(200, 200)
-	UiPop()
-	end]]--
 end
 
 function renderPlaneSprite()
@@ -193,12 +187,16 @@ function startFlight()
 	
 	local worldCameraTransform = TransformToParentTransform(planeTransform, localCameraTransform)
 	
-	lastFlightCameraPos = worldCameraTransform.pos
+	cameraTransform.pos = worldCameraTransform.pos
+	cameraTransform.rot = worldCameraTransform.rot
 end
 
 function thirdPersonControls()
+	local planePosition = planeTransform.pos
+	local planeRotation = planeTransform.rot
+	
 	local goalRot = nil
-	local tiltRot = 0
+	--[[local tiltRot = 0
 		
 	if InputDown(binds["Tilt_Counter_Clockwise"]) then
 		tiltRot = tiltRot - 10
@@ -208,46 +206,31 @@ function thirdPersonControls()
 		tiltRot = tiltRot + 10
 	end
 	
-	local tiltVel = tiltRot * 10
+	local tiltVel = tiltRot * 10]]--
 	
 	local mouseDeltaX = InputValue("mousedx")
 	local mouseDeltaY = InputValue("mousedy")
 	
 	local rotDist = -5
 	
-	--local currentDir = Vec(0, 0, rotDist)
 	local turnDir = Vec(mouseDeltaX, -mouseDeltaY, rotDist)
 	
-	--local lerpDir = VecLerp(currentDir, turnDir, GetValue("TurnSpeed") * dt)
-	
 	local goalPos = TransformToParentPoint(planeTransform, turnDir)
+	
 	goalRot = QuatLookAt(planePosition, goalPos)
-	--[[
-	--mouseDeltaX = mouseDeltaX - (mouseDeltaX % 100)
-	--mouseDeltaY = mouseDeltaY - (mouseDeltaY % 100)
 	
-	--if mouseDeltaX ~= 0 or mouseDeltaY ~= 0 or tiltVel ~= 0 then
-		local xRotAxis = Vec(1, 0, 0)
-		local yRotAxis = Vec(0, 1, 0)
-		local zRotAxis = Vec(0, 0, 1)
-	
-		local xRot = QuatAxisAngle(xRotAxis, -mouseDeltaY)
-		local yRot = QuatAxisAngle(yRotAxis, -mouseDeltaX)
-		local zRot = QuatAxisAngle(zRotAxis, -tiltVel)
-		
-		DebugWatch("dx", mouseDeltaX)
-		DebugWatch("dy", mouseDeltaY)
-		DebugWatch("dz", tiltVel)
-		
-		goalRot = QuatRotateQuat(QuatRotateQuat(xRot, yRot), zRot)
-		
-		goalRot = QuatRotateQuat(goalRot, planeRotation)]]--
-	--end
+	--[[ParticleReset()
+	ParticleRadius(0.1)
+	ParticleColor(1, 0, 0, 1)
+	SpawnParticle(goalPos, Vec(), 0.25)]]--
 	
 	return goalRot
 end
 
 function rcControls()
+	local planePosition = planeTransform.pos
+	local planeRotation = planeTransform.rot
+	
 	local goalRot = nil
 
 	local playerCameraTransform = GetPlayerCameraTransform()
@@ -261,10 +244,7 @@ function rcControls()
 	if hit then
 		goalRot = QuatLookAt(planePosition, hitPoint)
 	else
-		--local dirToPlayer = VecDir(planePosition, origin)
-		--local freeFlightDirection = VecNormalize(VecAdd(direction, dirToPlayer))
-	
-		local goalPos = VecAdd(planePosition, direction)-- VecAdd(planePosition, freeFlightDirection)
+		local goalPos = VecAdd(planePosition, direction)
 		
 		goalRot = QuatLookAt(planePosition, goalPos)
 	end
@@ -276,6 +256,7 @@ function handleFlight(dt)
 	local localVelocity = VecScale(planeDirection, GetValue("Speed") * dt)
 	
 	local planePosition = planeTransform.pos
+	local planeRotation = planeTransform.rot
 	
 	local worldVelocity = TransformToParentVec(planeTransform, localVelocity)
 	
@@ -292,14 +273,13 @@ function handleFlight(dt)
 	if goalRot ~= nil then
 		planeRotation = QuatSlerp(planeRotation, goalRot, GetValue("TurnSpeed") * dt)
 	end
+	
+	planeTransform.pos = planePosition
+	planeTransform.rot = planeRotation
 end
 
 function handlePlaneCollisions()
-	local planeTransform = Transform(planePosition, planeRotation)
-	
-	--local offset = Vec(0.25, 0.25, 0.25)
-	
-	local origin = planePosition --VecAdd(planePosition, offset)
+	local origin = planeTransform.pos 
 	
 	local direction = TransformToParentVec(planeTransform, Vec(0, 0, -1))
 	
@@ -327,15 +307,12 @@ function cameraLogic(dt)
 	
 	local localCameraTransform = Transform(cameraLocalPos, cameraLocalRot)
 	
-	local planeTransform = Transform(planePosition, planeRotation)
-	
 	local worldCameraTransform = TransformToParentTransform(planeTransform, localCameraTransform)
 	
-	--local curspeed = GetValue("CameraLerpSpeed") * dt
+	cameraTransform.pos = VecLerp(cameraTransform.pos, worldCameraTransform.pos, GetValue("CameraLerpSpeed") * dt)
+	cameraTransform.rot = QuatSlerp(cameraTransform.rot, worldCameraTransform.rot, GetValue("CameraLerpSpeed") * dt)
 	
-	--worldCameraTransform.pos = VecLerp(lastFlightCameraPos, worldCameraTransform.pos, curspeed)
-	
-	SetCameraTransform(worldCameraTransform)
+	SetCameraTransform(cameraTransform)
 	
 end
 
