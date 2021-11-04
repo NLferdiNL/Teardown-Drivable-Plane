@@ -15,8 +15,10 @@ local erasingValues = 0
 local menuWidth = 0.40 / 2
 local menuHeight = 0.45
 
+local textBoxes = {}
+
 function menu_init()
-	
+	setupTextBoxes()
 end
 
 function menu_tick(dt)
@@ -196,8 +198,6 @@ function menu_draw(dt)
 		UiFont("regular.ttf", 26)
 		UiAlign("center middle")
 		
-		setupTextBoxes()
-		
 		UiTranslate(0, 50)
 		
 		UiPush()
@@ -209,8 +209,20 @@ function menu_draw(dt)
 			end
 		UiPop()
 		
-		UiTranslate(0, 50 * (#bindOrder + 1))
+		UiTranslate(0, 50 * (#bindOrder))
 		--textboxClass_render(perUnitBox)
+		
+		UiPush()
+		for i = 1, #textBoxes do
+			local currTextBox = textBoxes[i]
+			
+			textboxClass_render(currTextBox)
+			
+			UiTranslate(0, 50)
+		end
+		UiPop()
+		
+		UiTranslate(0, 50 * (#textBoxes))
 		
 		--leftSideMenu()
 		
@@ -243,6 +255,39 @@ function setupTextBoxes()
 		
 		perUnitBox = textBox01
 	end]]--
+	for i = 1, #menuVarOrder do
+		local varName = menuVarOrder[i]
+		local varData = savedVars[varName]
+		
+		local newIndex = #textBoxes + 1
+		local newTextBox, isNewBox = textboxClass_getTextBox(newIndex)
+		
+		local isNumber = varData == "float" or varData == "int"
+		local limitedRange = varData["minVal"] ~= nil and varData["maxVal"] ~= nil
+		
+		local description = varData["description"]
+		
+		if description == nil then
+			description = ""
+		end
+		
+		if limitedRange then
+			description = description .. string.format("\nMin: %s\nDefault: %s\nMax: %s", varData.minVal, varData.default, varData.maxVal)
+		end
+		
+		if isNewBox then
+			newTextBox.name = varData.name
+			newTextBox.value = varData.current .. ""
+			newTextBox.numbersOnly = isNumber
+			newTextBox.limitsActive = limitedRange
+			newTextBox.numberMin = varData["minVal"]
+			newTextBox.numberMax = varData["maxVal"]
+			newTextBox.description = description
+			newTextBox.onInputFinished = function(v) SetValue(varName, tonumber(v)) end
+			
+			textBoxes[newIndex] = newTextBox
+		end
+	end
 end
 
 function drawRebindable(id, key)
