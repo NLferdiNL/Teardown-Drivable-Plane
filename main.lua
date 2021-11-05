@@ -13,7 +13,6 @@ local menu_disabled = false
 
 -- TODO: [HIGH PRIORITY] Make sprites for other planes.
 -- TODO: [MED PRIORITY] Fix third person camera: Plane moves right during turn.
--- TODO: [LOW PRIORITY] Better visuals for set target.
 
 savedVars = {
 	Speed = { name = "Speed",
@@ -67,6 +66,8 @@ local cameraLocalRot = QuatLookAt(cameraLocalPos, cameraLocalLookPos)
 
 --local planeTest = LoadSprite("MOD/sprites/square.png")
 local planeSprites = { "MOD/sprites/square.png", "MOD/sprites/square.png"}
+
+local targetSprite = LoadSprite("MOD/sprites/target.png")
 
 local damageTick = 0
 local maxDamageTick = 0.1
@@ -122,6 +123,10 @@ function tick(dt)
 		if InputPressed(binds["Disengage"]) then
 			planeActive = false
 			setGoalPosActive = false
+		end
+		
+		if setGoalPosActive then
+			renderSetGoalSprite()
 		end
 		
 		handleFlight(dt)
@@ -195,6 +200,15 @@ function renderPlaneSprite()
 	
 	--DrawSprite(planeTest, spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
 	DrawSprite(planeSprites[selectedPlane], spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
+end
+
+function renderSetGoalSprite()
+	local cameraTransform = GetCameraTransform()
+	
+	local lookAtCameraRot = QuatLookAt(setGoalPos, cameraTransform.pos)
+
+	local goalTransform = Transform(setGoalPos, lookAtCameraRot)
+	DrawSprite(targetSprite, goalTransform, 0.5, 0.5, 1, 0, 0, 1, false, false)
 end
 
 function canUseTool()
@@ -309,10 +323,10 @@ function handleFlight(dt)
 	else
 		goalRot = QuatLookAt(planePosition, setGoalPos)
 		
-		ParticleReset()
+		--[[ParticleReset()
 		ParticleRadius(0.1)
 		ParticleColor(1, 0, 0, 1)
-		SpawnParticle(setGoalPos, Vec(), 1)
+		SpawnParticle(setGoalPos, Vec(), 1)]]--
 		
 		if VecDist(planeTransform.pos, setGoalPos) < 1 then
 			setGoalPosActive = false
