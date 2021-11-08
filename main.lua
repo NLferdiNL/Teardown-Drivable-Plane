@@ -11,8 +11,6 @@ toolReadableName = "Drivable Plane"
 
 local menu_disabled = false
 
--- TODO: [HIGH PRIORITY] Make sprites for other planes.
--- TODO: [MED PRIORITY] Fix third person camera: Plane moves right during turn.
 
 savedVars = {
 	Speed = { name = "Speed",
@@ -49,6 +47,8 @@ savedVars = {
 menuVarOrder = { "Speed", "TurnSpeed" }
 
 local inFlightCamera = false
+local firstCameraTick = false
+
 local planeActive = false
 local planeTransform = Transform(planePosition, planeRotation)
 
@@ -64,8 +64,9 @@ local cameraLocalPos = Vec(0, 0.5, 5)
 local cameraLocalLookPos = Vec(0, 0.25, 0)
 local cameraLocalRot = QuatLookAt(cameraLocalPos, cameraLocalLookPos)
 
---local planeTest = LoadSprite("MOD/sprites/square.png")
-local planeSprites = { "MOD/sprites/square.png", "MOD/sprites/square.png"}
+local planeTest = LoadSprite("MOD/sprites/square.png")
+--local planeSprites = { "MOD/sprites/square.png", "MOD/sprites/square.png"}
+local localPlaneOffsets = { Vec(-0.45, 0, 0), Vec(-0.65, 0, 0) }
 
 local targetSprite = LoadSprite("MOD/sprites/target.png")
 
@@ -86,9 +87,9 @@ function init()
 	RegisterTool(toolName, toolReadableName, "MOD/vox/plane.vox")
 	SetBool("game.tool." .. toolName .. ".enabled", true)
 	
-	for i = 1, #planeSprites do
+	--[[for i = 1, #planeSprites do
 		planeSprites[i] = LoadSprite(planeSprites[i])
-	end
+	end]]--
 end
 
 function tick(dt)
@@ -112,12 +113,25 @@ function tick(dt)
 		end
 		
 		if inFlightCamera then
+			DebugWatch("dist", VecDist(GetPlayerCameraTransform().pos, planeTransform.pos))
+		
+			if VecDist(GetPlayerCameraTransform().pos, planeTransform.pos) > 10 and firstCameraTicks <= 0 then
+				inFlightCamera = false
+			end
+			
+			if firstCameraTicks then
+				firstCameraTicks = firstCameraTicks - 1
+			end
 			cameraLogic(dt)
-			renderPlaneSprite()
+			--renderPlaneSprite()
 		end
 		
 		if InputPressed(binds["Toggle_Camera"]) then
 			inFlightCamera = not inFlightCamera
+			
+			if inFlightCamera then
+				firstCameraTicks = 2
+			end
 		end
 		
 		if InputPressed(binds["Disengage"]) then
@@ -155,6 +169,7 @@ function planeBodiesLogic(dt)
 	SetToolTransform(Transform(), 0)
 	
 	local toolBody = GetToolBody()
+	local toolTransform = GetBodyTransform(toolBodyx)
 	local toolShapes = GetBodyShapes(toolBody)
 	
 	local planeShape = toolShapes[selectedPlane]
@@ -176,16 +191,21 @@ function planeBodiesLogic(dt)
 			end
 		end
 		
-		local offset = Vec(-0.25, -0.125, -0.125)
 		local planePosition = planeTransform.pos
 		local planeRotation = planeTransform.rot
 		
-		placeLocalBodyAtPos(toolBody, planeShape, VecAdd(planePosition, offset), planeRotation)
+		
+		--[[ParticleReset()
+		ParticleRadius(0.1)
+		ParticleColor(1, 0, 0, 1)
+		SpawnParticle(planePosition, Vec(), 0.5)]]--
+		
+		placeLocalBodyAtPos(toolBody, planeShape, planePosition, planeRotation, localPlaneOffsets[selectedPlane])
 	end
 	
 	for i = 1, planeCount do
 		if i ~= selectedPlane or (i == selectedPlane and not planeActive) then
-			placeLocalBodyAtPos(toolBody, toolShapes[i], Vec(0, -500, 0), Quat())
+			placeLocalBodyAtPos(toolBody, toolShapes[i], Vec(0, -500, 0), Quat(), Vec())
 		end
 	end
 end
@@ -198,8 +218,8 @@ function renderPlaneSprite()
 	
 	local spriteTransform = Transform(planePosition, lookRot)
 	
-	--DrawSprite(planeTest, spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
-	DrawSprite(planeSprites[selectedPlane], spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
+	DrawSprite(planeTest, spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
+	--DrawSprite(planeSprites[selectedPlane], spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
 end
 
 function renderSetGoalSprite()
@@ -323,11 +343,6 @@ function handleFlight(dt)
 	else
 		goalRot = QuatLookAt(planePosition, setGoalPos)
 		
-		--[[ParticleReset()
-		ParticleRadius(0.1)
-		ParticleColor(1, 0, 0, 1)
-		SpawnParticle(setGoalPos, Vec(), 1)]]--
-		
 		if VecDist(planeTransform.pos, setGoalPos) < 1 then
 			setGoalPosActive = false
 		end
@@ -396,12 +411,16 @@ function handlePlaneCollisions(fromPos)
 	end
 end
 
-function placeLocalBodyAtPos(toolBody, toolShape, shapeWorldPosition, shapeWorldRot)
+function placeLocalBodyAtPos(toolBody, toolShape, shapeWorldPosition, shapeWorldRot, localOffset)
 	local toolTransform = GetBodyTransform(toolBody)
 	
 	local tempTransform = Transform(shapeWorldPosition, shapeWorldRot)
 	
 	local localTransform = TransformToLocalTransform(toolTransform, tempTransform)
+	
+	localTransform.pos = VecAdd(localTransform.pos, localOffset)
+	
+	local backToWorld = TransformToParentTransform(toolTransform, localTransform)
 	
 	SetShapeLocalTransform(toolShape, localTransform)
 end
@@ -416,7 +435,8 @@ function cameraLogic(dt)
 	cameraTransform.pos = VecLerp(cameraTransform.pos, worldCameraTransform.pos, GetValue("CameraLerpSpeed") * dt)
 	cameraTransform.rot = worldCameraTransform.rot--QuatSlerp(cameraTransform.rot, worldCameraTransform.rot, GetValue("CameraLerpSpeed") * dt)
 	
-	SetCameraTransform(cameraTransform)
+	--SetCameraTransform(cameraTransform)
+	SetPlayerTransform(cameraTransform)
 end
 
 function resetShapeLocation(toolShape)
