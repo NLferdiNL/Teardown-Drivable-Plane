@@ -248,26 +248,28 @@ function textboxClass_setActiveState(me, newState)
 	me.inputActive = newState
 	if not me.inputActive then
 		if me.numbersOnly then
-			if me.value == "" then
-				me.value = me.numberMin .. ""
-			end
-			
-			if me.limitsActive then
-				local tempVal = tonumber(me.value)
-				
-				if tempVal == nil then
-					me.value = me.numberMin .. ""
-				elseif tempVal < me.numberMin then
-					me.value = me.numberMin .. ""
-				elseif tempVal > me.numberMax then
-					me.value = me.numberMax .. ""
-				end
-			end
+			textboxClass_checkValidNumber(me)
 		end
 		
 		if me.lastInputActive and me.onInputFinished ~= nil then
 			me.onInputFinished(me.value)
 		end
+	end
+end
+
+function textboxClass_checkValidNumber(me)
+	if me.value == nil or me.value == "" or tonumber(me.value) == nil then
+		me.value = me.numberMin .. ""
+	end
+	
+	local tempVal = tonumber(me.value)
+	
+	if tempVal == nil then
+		me.value = me.numberMin .. ""
+	elseif tempVal < me.numberMin and me.limitsActive then
+		me.value = me.numberMin .. ""
+	elseif tempVal > me.numberMax and me.limitsActive then
+		me.value = me.numberMax .. ""
 	end
 end
 

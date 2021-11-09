@@ -14,7 +14,7 @@ local menu_disabled = false
 savedVars = {
 	Speed = { name = "Speed",
 			  boxDescription = "Plane speed.",
-			  default = 10,
+			  default = 30,
 			  current = nil,
 			  valueType = "float",
 			  configurable = true,
@@ -34,16 +34,16 @@ savedVars = {
 	
 	CameraLerpSpeed = { name = "Camera Lerp Speed",
 						boxDescription = "Camera move speed.",
-						default = 100,
+						default = 50,
 						current = nil,
 						valueType = "float",
 						configurable = false,
 						minVal = 0.1,
-						maxVal = 25,
+						maxVal = 100,
 					  },
 }
 
-menuVarOrder = { "Speed", "TurnSpeed" }
+menuVarOrder = { "Speed", "TurnSpeed", }
 
 local inFlightCamera = false
 local firstCameraTick = false
@@ -63,18 +63,18 @@ local cameraLocalPos = Vec(0, 0.5, 10)
 local cameraLocalLookPos = Vec(0, 0.25, 0)
 local cameraLocalRot = QuatLookAt(cameraLocalPos, cameraLocalLookPos)
 
-local planeTest = LoadSprite("MOD/sprites/square.png")
---local planeSprites = { "MOD/sprites/square.png", "MOD/sprites/square.png"}
+--local planeTest = LoadSprite("MOD/sprites/square.png")
 local localPlaneOffsets = { Vec(-0.45 * 2, 0, 0), Vec(-0.65 * 2, 0, 0) }
 
 local targetSprite = LoadSprite("MOD/sprites/target.png")
 
 local damageTick = 0
 local maxDamageTick = 0.1
-local forceWaveRange = 2
-local forceRayLength = 0.25
-local forceRayWidth = 0.3
-local collisionForce = 25--20
+local forceWaveRange = 2 * 2
+local collisionForce = 20
+
+local collisionRayLength = 0.1 * 10
+local collisionRayWidth = 0.25 * 2
 
 local maxPlayerFromCameraDist = 20
 
@@ -87,10 +87,6 @@ function init()
 	
 	RegisterTool(toolName, toolReadableName, "MOD/vox/plane.vox")
 	SetBool("game.tool." .. toolName .. ".enabled", true)
-	
-	--[[for i = 1, #planeSprites do
-		planeSprites[i] = LoadSprite(planeSprites[i])
-	end]]--
 end
 
 function tick(dt)
@@ -111,6 +107,10 @@ function tick(dt)
 		
 		if InputPressed(binds["Fly_To_Target"]) and not inFlightCamera and not isMenuOpen() then
 			setSetGoalPos()
+		end
+		
+		if InputPressed(binds["Release_Target"]) and not isMenuOpen() then
+			setGoalPosActive = false
 		end
 		
 		if inFlightCamera then
@@ -141,7 +141,8 @@ function tick(dt)
 		end
 		
 		if setGoalPosActive then
-			renderSetGoalSprite()
+			renderBillboardSprite(targetSprite, setGoalPos, GetCameraTransform().pos, 0.5, Color4.Red)
+			--renderSetGoalSprite()
 		end
 		
 		handleFlight(dt)
@@ -195,12 +196,6 @@ function planeBodiesLogic(dt)
 		local planePosition = planeTransform.pos
 		local planeRotation = planeTransform.rot
 		
-		
-		--[[ParticleReset()
-		ParticleRadius(0.1)
-		ParticleColor(1, 0, 0, 1)
-		SpawnParticle(planePosition, Vec(), 0.5)]]--
-		
 		placeLocalBodyAtPos(toolBody, planeShape, planePosition, planeRotation, localPlaneOffsets[selectedPlane])
 	end
 	
@@ -211,7 +206,7 @@ function planeBodiesLogic(dt)
 	end
 end
 
-function renderPlaneSprite()
+--[[function renderPlaneSprite()
 	local cameraTransform = GetCameraTransform()
 	local planePosition = planeTransform.pos
 
@@ -220,17 +215,27 @@ function renderPlaneSprite()
 	local spriteTransform = Transform(planePosition, lookRot)
 	
 	DrawSprite(planeTest, spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
-	--DrawSprite(planeSprites[selectedPlane], spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
-end
+end]]--
 
-function renderSetGoalSprite()
-	local cameraTransform = GetCameraTransform()
+--[[function renderPlaneSprite()
+	renderBillboardSprite(planeTest, planeTransform.pos, cameraTransform.pos, 0.25, Color4.White, true, true)
+end]]--
+
+--[[function drawRay(origin, dir, dist, width)
+	local endVec = VecScale(dir, dist)
 	
-	local lookAtCameraRot = QuatLookAt(setGoalPos, cameraTransform.pos)
-
-	local goalTransform = Transform(setGoalPos, lookAtCameraRot)
-	DrawSprite(targetSprite, goalTransform, 0.5, 0.5, 1, 0, 0, 1, false, false)
-end
+	for x = -1, 1 do
+		for y = -1, 1 do
+			if (math.abs(x) == 1 and math.abs(y) ~= 1) or 
+			   (math.abs(x) ~= 1 and math.abs(y) == 1) then
+				
+				local offsetOrigin = VecAdd(origin, VecScale(Vec(x, y, 0), width))
+				
+				DebugLine(offsetOrigin, VecAdd(offsetOrigin, endVec), 1, 1, 1, 1)
+			end
+		end
+	end
+end]]--
 
 function canUseTool()
 	return GetString("game.player.tool") == toolName and GetPlayerVehicle() == 0
@@ -272,17 +277,6 @@ function thirdPersonControls()
 	local planeRotation = planeTransform.rot
 	
 	local goalRot = nil
-	--[[local tiltRot = 0
-		
-	if InputDown(binds["Tilt_Counter_Clockwise"]) then
-		tiltRot = tiltRot - 10
-	end
-	
-	if  InputDown(binds["Tilt_Clockwise"]) then
-		tiltRot = tiltRot + 10
-	end
-	
-	local tiltVel = tiltRot * 10]]--
 	
 	local mouseDeltaX = InputValue("mousedx") / 2 
 	local mouseDeltaY = InputValue("mousedy") / 2
@@ -309,7 +303,7 @@ function rcControls()
 	local origin = playerCameraTransform.pos
 	
 	local direction = TransformToParentVec(playerCameraTransform, Vec(0, 0, -1))
-	
+
 	local hit, hitPoint = raycast(origin, direction)
 	
 	if hit then
@@ -362,34 +356,12 @@ function handlePlaneCollisions(fromPos)
 	
 	local direction = TransformToParentVec(planeTransform, Vec(0, 0, -1))
 	
-	--function raycast(origin, direction, maxDistance, radius, rejectTransparant)
-	-- local hit, hitPoint, distance, normal, shape = raycast(origin, direction, 0.1, 0.1)
-	local hit, hitPoint = raycast(origin, direction, 0.1, 0.25)
+	local hit, hitPoint = raycast(origin, direction, collisionRayLength, collisionRayWidth)
 	
 	if hit then
-		--MakeHole(hitPoint, 0.75, 0.75, 0.75)
 		MakeHole(hitPoint, 4, 4, 4)
 		
 		damageTick = maxDamageTick
-		
-		--[[for x = -forceWaveRange, forceWaveRange do
-			for y = -forceWaveRange, forceWaveRange do
-				local iOrigin = VecAdd(planeTransform.pos, Vec(x, y, 0))
-				local iDir = TransformToParentVec(planeTransform, Vec(0, 0, -1))
-				
-				QueryRequire("dynamic")
-				local iHit, iHitPoint, distance, normal, shape = raycast(iOrigin, iDir, forceRayLength, forceRayWidth)
-				
-				if iHit then
-					local iBody = GetShapeBody(shape)
-					
-					SetBodyVelocity(iBody, VecScale(VecDir(iOrigin, iHitPoint), collisionForce))
-					--ApplyBodyImpulse(iBody, iHitPoint, VecScale(VecDir(iOrigin, iHitPoint), 500))
-					
-					DebugPrint("daa")
-				end
-			end
-		end]]--
 		
 		QueryRequire("dynamic")
 		
@@ -402,10 +374,6 @@ function handlePlaneCollisions(fromPos)
 		
 		for i = 1, #bodies do
 			local hitBody = bodies[i]
-			--local bodyTransform = GetBodyTransform(hitBody)
-			--local bodyCOM = GetBodyCenterOfMass(hitBody)
-			
-			
 			
 			SetBodyVelocity(hitBody, VecScale(direction, collisionForce))
 		end
@@ -427,16 +395,13 @@ function placeLocalBodyAtPos(toolBody, toolShape, shapeWorldPosition, shapeWorld
 end
 
 function cameraLogic(dt)
-	-- lastFlightCameraPos
-	
 	local localCameraTransform = Transform(cameraLocalPos, cameraLocalRot)
 	
 	local worldCameraTransform = TransformToParentTransform(planeTransform, localCameraTransform)
 	
 	cameraTransform.pos = VecLerp(cameraTransform.pos, worldCameraTransform.pos, GetValue("CameraLerpSpeed") * dt)
-	cameraTransform.rot = worldCameraTransform.rot--QuatSlerp(cameraTransform.rot, worldCameraTransform.rot, GetValue("CameraLerpSpeed") * dt)
+	cameraTransform.rot = worldCameraTransform.rot
 	
-	--SetCameraTransform(cameraTransform)
 	SetPlayerTransform(cameraTransform)
 end
 
@@ -447,23 +412,3 @@ function resetShapeLocation(toolShape)
 	
 	SetShapeLocalTransform(toolShape, localTransform)
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

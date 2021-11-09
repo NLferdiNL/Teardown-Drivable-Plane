@@ -258,35 +258,40 @@ function setupTextBoxes()
 	for i = 1, #menuVarOrder do
 		local varName = menuVarOrder[i]
 		local varData = savedVars[varName]
+		local useTextbox = varData["valueType"] == "float" or varData["valueType"] == "int" or varData["valueType"] == "string"
 		
-		local newIndex = #textBoxes + 1
-		local newTextBox, isNewBox = textboxClass_getTextBox(newIndex)
-		
-		local isNumber = varData == "float" or varData == "int"
-		local limitedRange = varData["minVal"] ~= nil and varData["maxVal"] ~= nil
-		
-		local description = varData["description"]
-		
-		if description == nil then
-			description = ""
-		end
-		
-		if limitedRange then
-			description = description .. string.format("\nMin: %s\nDefault: %s\nMax: %s", varData.minVal, varData.default, varData.maxVal)
-		end
-		
-		if isNewBox then
-			newTextBox.disabled = not varData.configurable
-			newTextBox.name = varData.name
-			newTextBox.value = varData.current .. ""
-			newTextBox.numbersOnly = isNumber
-			newTextBox.limitsActive = limitedRange
-			newTextBox.numberMin = varData["minVal"]
-			newTextBox.numberMax = varData["maxVal"]
-			newTextBox.description = description
-			newTextBox.onInputFinished = function(v) SetValue(varName, tonumber(v)) end
+		if useTextbox then
+			local newIndex = #textBoxes + 1
+			local newTextBox, isNewBox = textboxClass_getTextBox(newIndex)
 			
-			textBoxes[newIndex] = newTextBox
+			local isNumber = varData["valueType"] == "float" or varData["valueType"] == "int"
+			local limitedRange = varData["minVal"] ~= nil and varData["maxVal"] ~= nil and isNumber
+			
+			local description = varData["description"]
+			
+			if description == nil then
+				description = ""
+			end
+			
+			if limitedRange then
+				description = description .. string.format("\nMin: %s\nDefault: %s\nMax: %s", varData.minVal, varData.default, varData.maxVal)
+			end
+			
+			if isNewBox then
+				newTextBox.disabled = not varData.configurable
+				newTextBox.name = varData.name
+				newTextBox.value = varData.current .. ""
+				newTextBox.numbersOnly = isNumber
+				newTextBox.limitsActive = limitedRange
+				newTextBox.numberMin = varData["minVal"]
+				newTextBox.numberMax = varData["maxVal"]
+				newTextBox.description = description
+				newTextBox.onInputFinished = function(v) SetValue(varName, tonumber(v)) end
+				
+				textBoxes[newIndex] = newTextBox
+			end
+		else
+			--Do boolean
 		end
 	end
 end

@@ -143,3 +143,16 @@ function deepcopy(orig)
     end
     return copy
 end
+
+function renderBillboardSprite(spriteHandle, pos, lookPos, size, color4, depth, additive)
+	size = size or 0.5
+	color4 = color4 or Color4.White
+	depth = depth or false
+	additive = additive or false
+	
+	local lookAtCameraRot = QuatLookAt(pos, lookPos)
+
+	local spriteTransform = Transform(pos, lookAtCameraRot)
+	
+	DrawSprite(spriteHandle, spriteTransform, size, size, color4.r, color4.g, color4.b, color4.a, false, false)
+end
