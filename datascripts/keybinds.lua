@@ -1,7 +1,7 @@
 #include "scripts/utils.lua"
 
 binds = {
-	Shoot = "usetool",
+	Shoot = "lmb",
 	Disengage = "r",
 	Toggle_Camera = "t",
 	Plane_Select_Move = "mousewheel",
