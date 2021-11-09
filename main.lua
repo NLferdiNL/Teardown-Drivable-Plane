@@ -11,7 +11,6 @@ toolReadableName = "Drivable Plane"
 
 local menu_disabled = false
 
-
 savedVars = {
 	Speed = { name = "Speed",
 			  boxDescription = "Plane speed.",
@@ -60,13 +59,13 @@ local cameraTransform = Transform()
 local selectedPlane = 1
 local planeCount = 2
 
-local cameraLocalPos = Vec(0, 0.5, 5)
+local cameraLocalPos = Vec(0, 0.5, 10)
 local cameraLocalLookPos = Vec(0, 0.25, 0)
 local cameraLocalRot = QuatLookAt(cameraLocalPos, cameraLocalLookPos)
 
 local planeTest = LoadSprite("MOD/sprites/square.png")
 --local planeSprites = { "MOD/sprites/square.png", "MOD/sprites/square.png"}
-local localPlaneOffsets = { Vec(-0.45, 0, 0), Vec(-0.65, 0, 0) }
+local localPlaneOffsets = { Vec(-0.45 * 2, 0, 0), Vec(-0.65 * 2, 0, 0) }
 
 local targetSprite = LoadSprite("MOD/sprites/target.png")
 
@@ -75,7 +74,9 @@ local maxDamageTick = 0.1
 local forceWaveRange = 2
 local forceRayLength = 0.25
 local forceRayWidth = 0.3
-local collisionForce = 20
+local collisionForce = 25--20
+
+local maxPlayerFromCameraDist = 20
 
 local setGoalPos = Vec()
 local setGoalPosActive = false
@@ -115,7 +116,7 @@ function tick(dt)
 		if inFlightCamera then
 			DebugWatch("dist", VecDist(GetPlayerCameraTransform().pos, planeTransform.pos))
 		
-			if VecDist(GetPlayerCameraTransform().pos, planeTransform.pos) > 10 and firstCameraTicks <= 0 then
+			if VecDist(GetPlayerCameraTransform().pos, planeTransform.pos) > maxPlayerFromCameraDist and firstCameraTicks <= 0 then
 				inFlightCamera = false
 			end
 			
