@@ -9,6 +9,8 @@
 toolName = "drivableplane"
 toolReadableName = "Drivable Plane"
 
+--TODO: Fix offset weirdness.
+
 local menu_disabled = false
 
 savedVars = {
@@ -56,15 +58,19 @@ local planeDirection = Vec(0, 0, -1) -- local space
 
 local cameraTransform = Transform()
 
-local selectedPlane = 1
-local planeCount = 2
-
 local cameraLocalPos = Vec(0, 0.5, 10)
 local cameraLocalLookPos = Vec(0, 0.25, 0)
 local cameraLocalRot = QuatLookAt(cameraLocalPos, cameraLocalLookPos)
 
---local planeTest = LoadSprite("MOD/sprites/square.png")
-local localPlaneOffsets = { Vec(-0.45 * 2, 0, 0), Vec(-0.65 * 2, 0, 0) }
+local planeTest = LoadSprite("MOD/sprites/square.png")
+local localPlaneTransforms = {
+	Transform(Vec(-0.9, -0.4, -1.5), Quat()),
+	Transform(Vec(-0.45 * 2, 0, 0), Quat()),
+	Transform(Vec(-0.45, 0, 0), Quat())
+}
+
+local selectedPlane = 1
+local planeCount = #localPlaneTransforms
 
 local targetSprite = LoadSprite("MOD/sprites/target.png")
 
@@ -112,6 +118,15 @@ function tick(dt)
 		if InputPressed(binds["Release_Target"]) and not isMenuOpen() then
 			setGoalPosActive = false
 		end
+		
+		function rotateTest()
+			local newRot = QuatAxisAngle(Vec(0, 1, 0), dt * 100)
+			
+			localPlaneTransforms[selectedPlane].rot = QuatRotateQuat(localPlaneTransforms[selectedPlane].rot, newRot)
+		end
+		
+		renderPlaneSprite()
+		rotateTest()
 		
 		if inFlightCamera then
 			DebugWatch("dist", VecDist(GetPlayerCameraTransform().pos, planeTransform.pos))
@@ -193,20 +208,17 @@ function planeBodiesLogic(dt)
 			end
 		end
 		
-		local planePosition = planeTransform.pos
-		local planeRotation = planeTransform.rot
-		
-		placeLocalBodyAtPos(toolBody, planeShape, planePosition, planeRotation, localPlaneOffsets[selectedPlane])
+		placeLocalBodyAtPos(toolBody, planeShape, planeTransform, localPlaneTransforms[selectedPlane])
 	end
 	
 	for i = 1, planeCount do
 		if i ~= selectedPlane or (i == selectedPlane and not planeActive) then
-			placeLocalBodyAtPos(toolBody, toolShapes[i], Vec(0, -500, 0), Quat(), Vec())
+			placeLocalBodyAtPos(toolBody, toolShapes[i], Transform(Vec(0, -500, 0)), Quat(), Transform())
 		end
 	end
 end
 
---[[function renderPlaneSprite()
+function renderPlaneSprite()
 	local cameraTransform = GetCameraTransform()
 	local planePosition = planeTransform.pos
 
@@ -215,7 +227,7 @@ end
 	local spriteTransform = Transform(planePosition, lookRot)
 	
 	DrawSprite(planeTest, spriteTransform, 0.25, 0.25, 0.5, 0.5, 0.5, 1, true, true)
-end]]--
+end
 
 --[[function renderPlaneSprite()
 	renderBillboardSprite(planeTest, planeTransform.pos, cameraTransform.pos, 0.25, Color4.White, true, true)
@@ -257,7 +269,7 @@ end
 function startFlight()
 	local playerCameraTransform = GetPlayerCameraTransform()
 	
-	local planePosition = playerCameraTransform.pos
+	local planePosition = VecAdd(playerCameraTransform.pos, Vec(0, 1, 0))
 	local planeRotation = playerCameraTransform.rot
 	
 	planeTransform = Transform(planePosition, planeRotation)
@@ -380,18 +392,24 @@ function handlePlaneCollisions(fromPos)
 	end
 end
 
-function placeLocalBodyAtPos(toolBody, toolShape, shapeWorldPosition, shapeWorldRot, localOffset)
+function placeLocalBodyAtPos(toolBody, toolShape, currPlaneTransform, localShapeTransform)
 	local toolTransform = GetBodyTransform(toolBody)
 	
-	local tempTransform = Transform(shapeWorldPosition, shapeWorldRot)
+	local localPlaneTransform = TransformToLocalTransform(toolTransform, currPlaneTransform)
 	
-	local localTransform = TransformToLocalTransform(toolTransform, tempTransform)
+	local outsideShapeTransform = TransformToParentTransform(localPlaneTransform, localShapeTransform)
 	
-	localTransform.pos = VecAdd(localTransform.pos, localOffset)
+	--[[localPlaneTransform.pos = VecAdd(localPlaneTransform.pos, localShapeTransform.pos)
+	localPlaneTransform.rot = QuatRotateQuat(localPlaneTransform.rot, localShapeTransform.rot)
 	
-	local backToWorld = TransformToParentTransform(toolTransform, localTransform)
+	local worldShapeTransform = TransformToParentTransform(localPlaneTransform, outsideShapeTransform)
 	
-	SetShapeLocalTransform(toolShape, localTransform)
+	ParticleReset()
+	ParticleColor(1, 0, 0)
+	ParticleRadius(0.2)
+	SpawnParticle(worldShapeTransform.pos, Vec(), 0.2)]]--
+	
+	SetShapeLocalTransform(toolShape, outsideShapeTransform)
 end
 
 function cameraLogic(dt)
