@@ -43,9 +43,25 @@ savedVars = {
 						minVal = 0.1,
 						maxVal = 100,
 					  },
+					  
+	ExplodeOnImpact = { name = "Explode On Impact",
+						boxDescription = "Explosions on hit.",
+						default = false,
+						current = nil,
+						valueType = "bool",
+						configurable = true,
+					  },
+					  
+	DieOnImpact = { name = "Die On Impact",
+					boxDescription = "Stop flight on hit.",
+					default = false,
+					current = nil,
+					valueType = "bool",
+					configurable = true,
+				  },
 }
 
-menuVarOrder = { "Speed", "TurnSpeed", }
+menuVarOrder = { "Speed", "TurnSpeed", "ExplodeOnImpact", "DieOnImpact", }
 
 local inFlightCamera = false
 local firstCameraTick = false
@@ -95,12 +111,40 @@ function init()
 	SetBool("game.tool." .. toolName .. ".enabled", true)
 end
 
+function allStatic()
+	QueryRequire("dynamic")
+	
+	local bodies = QueryAabbBodies
+	
+	local playerPos = GetPlayerTransform().pos
+	
+	local range = 200
+	
+	local minPos = VecAdd(playerPos, Vec(-range, -range, -range))
+	local maxPos = VecAdd(playerPos, Vec(range, range, range))
+	
+	local bodies = QueryAabbBodies(minPos, maxPos)
+	
+	for i = 1, #bodies do
+		local hitBody = bodies[i]
+		
+		SetBodyDynamic(hitBody, false)
+		SetBodyVelocity(hitBody, Vec())
+	end
+	
+	SetString("hud.notification", #bodies .. " set to static.")
+end
+
 function tick(dt)
 	if not menu_disabled then
 		menu_tick(dt)
 	end
 	
 	local isMenuOpenRightNow = isMenuOpen()
+	
+	if isMenuOpenRightNow then
+		SetTimeScale(0.1)
+	end
 	
 	if not canUseTool() and not planeActive then
 		return
@@ -109,27 +153,21 @@ function tick(dt)
 	planeBodiesLogic(dt)
 	
 	if planeActive then
+		handleKeyInputs()
+		
 		SetString("game.player.tool", toolName)
 		
-		if InputPressed(binds["Fly_To_Target"]) and not inFlightCamera and not isMenuOpen() then
-			setSetGoalPos()
-		end
-		
-		if InputPressed(binds["Release_Target"]) and not isMenuOpen() then
-			setGoalPosActive = false
-		end
-		
-		function rotateTest()
-			local newRot = QuatAxisAngle(Vec(0, 1, 0), dt * 100)
+		--[[function rotateTest()
+			local newRot = QuatAxisAngle(Vec(0, 0, 1), dt * 100)
 			
 			localPlaneTransforms[selectedPlane].rot = QuatRotateQuat(localPlaneTransforms[selectedPlane].rot, newRot)
 		end
 		
 		renderPlaneSprite()
-		rotateTest()
+		rotateTest()]]--
 		
 		if inFlightCamera then
-			DebugWatch("dist", VecDist(GetPlayerCameraTransform().pos, planeTransform.pos))
+			--DebugWatch("dist", VecDist(GetPlayerCameraTransform().pos, planeTransform.pos))
 		
 			if VecDist(GetPlayerCameraTransform().pos, planeTransform.pos) > maxPlayerFromCameraDist and firstCameraTicks <= 0 then
 				inFlightCamera = false
@@ -140,19 +178,6 @@ function tick(dt)
 			end
 			cameraLogic(dt)
 			--renderPlaneSprite()
-		end
-		
-		if InputPressed(binds["Toggle_Camera"]) then
-			inFlightCamera = not inFlightCamera
-			
-			if inFlightCamera then
-				firstCameraTicks = 2
-			end
-		end
-		
-		if InputPressed(binds["Disengage"]) then
-			planeActive = false
-			setGoalPosActive = false
 		end
 		
 		if setGoalPosActive then
@@ -180,6 +205,29 @@ end
 
 function draw(dt)
 	menu_draw(dt)
+end
+
+function handleKeyInputs()
+	if InputPressed(binds["Fly_To_Target"]) and not inFlightCamera and not isMenuOpen() then
+		setSetGoalPos()
+	end
+	
+	if InputPressed(binds["Release_Target"]) and not isMenuOpen() then
+		setGoalPosActive = false
+	end
+	
+	if InputPressed(binds["Toggle_Camera"]) then
+		inFlightCamera = not inFlightCamera
+		
+		if inFlightCamera then
+			firstCameraTicks = 2
+		end
+	end
+	
+	if InputPressed(binds["Disengage"]) then
+		planeActive = false
+		setGoalPosActive = false
+	end
 end
 
 function planeBodiesLogic(dt)
@@ -341,22 +389,24 @@ function handleFlight(dt)
 	
 	local goalRot = nil
 	
-	if not setGoalPosActive then
-		if inFlightCamera then
-			goalRot = thirdPersonControls()
+	if not isMenuOpen() then
+		if not setGoalPosActive then
+			if inFlightCamera then
+				goalRot = thirdPersonControls()
+			else
+				goalRot = rcControls()
+			end
 		else
-			goalRot = rcControls()
+			goalRot = QuatLookAt(planePosition, setGoalPos)
+			
+			if VecDist(planeTransform.pos, setGoalPos) < 1 then
+				setGoalPosActive = false
+			end
 		end
-	else
-		goalRot = QuatLookAt(planePosition, setGoalPos)
 		
-		if VecDist(planeTransform.pos, setGoalPos) < 1 then
-			setGoalPosActive = false
+		if goalRot ~= nil then
+			planeRotation = QuatSlerp(planeRotation, goalRot, GetValue("TurnSpeed") * dt)
 		end
-	end
-	
-	if goalRot ~= nil then
-		planeRotation = QuatSlerp(planeRotation, goalRot, GetValue("TurnSpeed") * dt)
 	end
 	
 	planeTransform.pos = planePosition
@@ -371,7 +421,11 @@ function handlePlaneCollisions(fromPos)
 	local hit, hitPoint = raycast(origin, direction, collisionRayLength, collisionRayWidth)
 	
 	if hit then
-		MakeHole(hitPoint, 4, 4, 4)
+		if not GetValue("ExplodeOnImpact") then
+			MakeHole(hitPoint, 4, 4, 4)
+		else
+			Explosion(hitPoint, 2)
+		end
 		
 		damageTick = maxDamageTick
 		
@@ -388,6 +442,14 @@ function handlePlaneCollisions(fromPos)
 			local hitBody = bodies[i]
 			
 			SetBodyVelocity(hitBody, VecScale(direction, collisionForce))
+			
+			--local bodyMass = GetBodyMass(hitBody)
+			--ApplyBodyImpulse(hitBody, hitPoint, VecScale(direction, bodyMass * collisionForce))
+		end
+		
+		if GetValue("DieOnImpact") then
+			planeActive = false
+			setGoalPosActive = false
 		end
 	end
 end

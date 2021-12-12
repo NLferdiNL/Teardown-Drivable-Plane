@@ -35,14 +35,17 @@ function c_UiButtonPressColor(color4)
 	UiButtonPressColor(color4.r, color4.g, color4.b, color4.a)
 end
 
-function drawToggle(label, value, callback)
+function drawToggle(label, value, callback, buttonWidth, buttonHeight)
 	local enabledText = "Enabled"
 	local disabledText = "Disabled"
+	
+	buttonWidth = buttonWidth or 250
+	buttonHeight = buttonHeight or 40
 
 	UiPush()
 		UiButtonImageBox("MOD/sprites/square.png", 6, 6, 0, 0, 0, 0.5)
 		
-		if UiTextButton(label .. " " .. (value and enabledText or disabledText), 250, 40) then
+		if UiTextButton(label .. " " .. (value and enabledText or disabledText), buttonWidth, buttonHeight) then
 			callback(not value)
 		end
 	UiPop()

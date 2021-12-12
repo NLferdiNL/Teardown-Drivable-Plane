@@ -1,5 +1,9 @@
 #include "datascripts/keybinds.lua"
 
+-- Forgot to change id, thanks sandboxed storage.
+-- Cannot change this now that people have save files though.
+-- Not that it really matters because this is only visible to
+-- those inspecting their savefile anyway.
 moddataPrefix = "savegame.mod.bodycollapsor"
 
 function saveFileInit(savedVars)
@@ -20,12 +24,19 @@ function saveVars(savedVars)
 	for varName, varData in pairs(savedVars) do
 		local currentValue = varData.current
 		
+		local callback = nil
+		
 		if varData.valueType == "float" then
 			SetFloat(moddataPrefix .. "Var" .. varName, currentValue)
+			
 		elseif varData.valueType == "int" then
 			SetInt(moddataPrefix .. "Var" .. varName, currentValue)
+			
 		elseif varData.valueType == "string" then
-			SetFloat(moddataPrefix .. "Var" .. varName, currentValue)
+			SetString(moddataPrefix .. "Var" .. varName, currentValue)
+			
+		elseif varData.valueType == "bool" then
+			SetBool(moddataPrefix .. "Var" .. varName, currentValue)
 		end
 	end
 end
@@ -37,10 +48,15 @@ function loadVars(savedVars)
 		if HasKey(moddataPrefix .. "Var" .. varName) then
 			if varData.valueType == "float" then
 				currentValue = GetFloat(moddataPrefix .. "Var" .. varName)
+				
 			elseif varData.valueType == "int" then
 				currentValue = GetInt(moddataPrefix .. "Var" .. varName)
+				
 			elseif varData.valueType == "string" then
-				currentValue = GetFloat(moddataPrefix .. "Var" .. varName)
+				currentValue = GetString(moddataPrefix .. "Var" .. varName)
+			
+			elseif varData.valueType == "bool" then
+				currentValue = GetBool(moddataPrefix .. "Var" .. varName)
 			end
 		else
 			currentValue = varData.default

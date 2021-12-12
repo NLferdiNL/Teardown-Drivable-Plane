@@ -12,13 +12,20 @@ local rebinding = nil
 local erasingBinds = 0
 local erasingValues = 0
 
-local menuWidth = 0.40 / 2
-local menuHeight = 0.45
+local colums = 1
+
+local menuMargin = 10
+
+local menuWidth = 0
+local menuHeight = 0
 
 local textBoxes = {}
 
 function menu_init()
 	setupTextBoxes()
+	
+	menuWidth = 384
+	menuHeight = ((#bindOrder + #menuVarOrder) / colums + 4) * 50 + menuMargin
 end
 
 function menu_tick(dt)
@@ -154,7 +161,7 @@ end
 
 function leftSideMenu()
 	UiPush()
-		UiTranslate(-UiWidth() * menuWidth / 5, 0)
+		UiTranslate(-menuWidth / 5, 0)
 		
 	UiPop()
 end
@@ -162,7 +169,7 @@ end
 function rightSideMenu()
 	UiPush()
 		UiPush()
-			UiTranslate(UiWidth() * menuWidth / 5, 0)
+			UiTranslate(menuWidth / 5, 0)
 			
 			UiFont("regular.ttf", 20)
 		UiPop()
@@ -184,21 +191,21 @@ function menu_draw(dt)
 		
 		UiPush()
 			UiColorFilter(0, 0, 0, 0.25)
-			UiImageBox("MOD/sprites/square.png", UiWidth() * menuWidth, UiHeight() * menuHeight, 10, 10)
+			UiImageBox("MOD/sprites/square.png", menuWidth, menuHeight, 10, 10)
 		UiPop()
 		
-		UiWordWrap(UiWidth() * menuWidth)
+		UiWordWrap(menuWidth)
 		
-		UiTranslate(0, -UiHeight() * (menuHeight / 2))
+		UiTranslate(0, -menuHeight / 2)
 		
 		drawTitle()
 		
-		--UiTranslate(UiWidth() * (menuWidth / 10), 0)
+		--UiTranslate(menuWidth / 10, 0)
 		
 		UiFont("regular.ttf", 26)
 		UiAlign("center middle")
 		
-		UiTranslate(0, 50)
+		UiTranslate(0, menuMargin + 20)
 		
 		UiPush()
 			for i = 1, #bindOrder do
@@ -213,16 +220,24 @@ function menu_draw(dt)
 		--textboxClass_render(perUnitBox)
 		
 		UiPush()
-		for i = 1, #textBoxes do
-			local currTextBox = textBoxes[i]
+		for i = 1, #menuVarOrder do
+			local varName = menuVarOrder[i]
+			local varData = savedVars[varName]
+			local boxId = varData["boxId"]
 			
-			textboxClass_render(currTextBox)
+			if boxId ~= nil then
+				local currTextBox = textBoxes[boxId]
+			
+				textboxClass_render(currTextBox)
+			else
+				drawToggle(varData["name"] .. ":", varData["current"], function(i) varData["current"] = i end, 300)
+			end
 			
 			UiTranslate(0, 50)
 		end
 		UiPop()
 		
-		UiTranslate(0, 50 * (#textBoxes))
+		UiTranslate(0, 50 * (#menuVarOrder))
 		
 		--leftSideMenu()
 		
@@ -231,8 +246,8 @@ function menu_draw(dt)
 	
 	UiPush()
 		UiTranslate(UiWidth() * 0.5, UiHeight() * 0.5)
-		--UiTranslate(0, -UiHeight() * (menuHeight / 2))
-		UiTranslate(0, UiHeight() * (menuHeight / 2) - 10)
+		--UiTranslate(0, menuHeight / 2)
+		UiTranslate(0, menuHeight / 2 - menuMargin)
 		
 		bottomMenuButtons()
 	UiPop()
@@ -290,8 +305,8 @@ function setupTextBoxes()
 				
 				textBoxes[newIndex] = newTextBox
 			end
-		else
-			--Do boolean
+			
+			varData["boxId"] = newIndex
 		end
 	end
 end
@@ -300,12 +315,12 @@ function drawRebindable(id, key)
 	UiPush()
 		UiButtonImageBox("MOD/sprites/square.png", 6, 6, 0, 0, 0, 0.5)
 	
-		--UiTranslate(UiWidth() * menuWidth / 1.5, 0)
+		--UiTranslate(menuWidth / 1.5, 0)
 	
 		UiAlign("right middle")
 		UiText(bindNames[id] .. "")
 		
-		--UiTranslate(UiWidth() * menuWidth * 0.1, 0)
+		--UiTranslate(menuWidth * 0.1, 0)
 		
 		UiAlign("left middle")
 		
